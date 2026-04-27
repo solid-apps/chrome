@@ -10,6 +10,7 @@ import { listApps, loadApp } from "./registry.js";
 import { openWindow } from "./windows.js";
 import { getAuth, authFetch } from "./auth.js";
 import { subscribe } from "./notifications.js";
+import { install, uninstall, isInstalled, list as listInstalled } from "./installed.js";
 
 let overlay = null;
 let apps = null;        // cached after first load
@@ -93,17 +94,36 @@ export function openLauncher() {
       grid.innerHTML = `<div class="launcher-status">No apps match “${escape(q)}”.</div>`;
       return;
     }
-    grid.innerHTML = matches.map(a => `
-      <button class="launcher-app" data-url="${escape(a.url)}" title="${escape(a.description)}">
+    const installedSet = new Set(listInstalled());
+    grid.innerHTML = matches.map(a => {
+      const pinned = installedSet.has(a.url);
+      return `
+      <div class="launcher-app ${pinned ? "pinned" : ""}" tabindex="0" data-url="${escape(a.url)}" title="${escape(a.description)}">
         <div class="launcher-app-icon">${escape(a.icon)}</div>
         <div class="launcher-app-name">${escape(a.name)}</div>
         <div class="launcher-app-author">${escape(a.author)}</div>
-      </button>
-    `).join("");
-    for (const btn of grid.querySelectorAll("[data-url]")) {
-      btn.addEventListener("click", () => launchApp(btn.dataset.url));
-      btn.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); btn.click(); }
+        <button class="launcher-pin ${pinned ? "on" : ""}" data-pin="${escape(a.url)}" title="${pinned ? "Unpin from shelf" : "Pin to shelf"}">${pinned ? "★" : "☆"}</button>
+      </div>
+    `;
+    }).join("");
+    for (const card of grid.querySelectorAll("[data-url]")) {
+      card.addEventListener("click", (e) => {
+        if (e.target.closest("[data-pin]")) return; // pin button handled below
+        launchApp(card.dataset.url);
+      });
+      card.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); launchApp(card.dataset.url); }
+      });
+    }
+    for (const pin of grid.querySelectorAll("[data-pin]")) {
+      pin.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const url = pin.dataset.pin;
+        const auth = getAuth();
+        const webid = auth.type === "solid" ? auth.id : null;
+        if (isInstalled(url)) await uninstall(url, webid);
+        else                  await install(url, webid);
+        draw(); // re-render to update pin states
       });
     }
   }

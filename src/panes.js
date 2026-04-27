@@ -35,12 +35,32 @@ function ensureIndex() {
 export async function getPanesIndex() { return ensureIndex(); }
 
 /** Given an array of rdf:type IRIs found on a subject, return the
- *  first registry pane whose forClass matches, or null. */
+ *  first registry pane whose forClass matches, or null.
+ *
+ *  Two-pass match:
+ *    1. Exact full-IRI equality (handles docs that emit unprefixed IRIs)
+ *    2. Local-name suffix on bare terms (handles compacted @type like
+ *       "Tracker" pointing at wf:Tracker via the doc's @context — we
+ *       can't expand the @context cheaply, so a local-name match is
+ *       the practical fallback)
+ */
 export async function findPaneFor(types) {
   if (!Array.isArray(types) || !types.length) return null;
   const index = await ensureIndex();
+
   for (const t of types) {
-    if (index.has(t)) return index.get(t);
+    if (typeof t === "string" && index.has(t)) return index.get(t);
+  }
+  for (const t of types) {
+    if (typeof t !== "string") continue;
+    // Loose-match only on bare local names (no `/` or `:`), so a
+    // fully-qualified IRI that didn't match in pass 1 doesn't get
+    // mis-resolved here.
+    if (t.includes("/") || t.includes(":")) continue;
+    for (const [cls, entry] of index) {
+      const clsLocal = cls.split(/[#/]/).pop();
+      if (clsLocal === t) return entry;
+    }
   }
   return null;
 }

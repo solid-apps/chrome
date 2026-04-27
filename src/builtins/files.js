@@ -143,14 +143,34 @@ async function openResource(url, ctx) {
 function extractTypes(doc, url) {
   if (!doc) return [];
   const nodes = Array.isArray(doc?.["@graph"]) ? doc["@graph"] : [doc];
+  // Try exact full-URL match first; then fragment-prefixed (#frag);
+  // then fall back to the first node that has any @type at all (covers
+  // docs with fragment-only @ids like "#this" or "#work" that JSON.parse
+  // didn't expand against the doc URL).
   let subj = nodes.find(n => n["@id"] === url) || null;
   if (!subj) {
-    subj = nodes.find(n => typeof n["@id"] === "string" && n["@id"].split("#")[0] === url) || nodes[0];
+    subj = nodes.find(n => typeof n["@id"] === "string" && /^#/.test(n["@id"])) || null;
   }
+  if (!subj) subj = nodes.find(n => n["@type"]) || nodes[0];
   if (!subj) return [];
-  const t = subj["@type"];
-  if (!t) return [];
-  return Array.isArray(t) ? t.slice() : [t];
+
+  // Aggregate types from this subject AND any other typed nodes — covers
+  // multi-subject docs (a Tracker that also contains its issue Vtodos).
+  // De-duped, primary subject's types first so they win the pane match.
+  const out = [];
+  const seen = new Set();
+  const push = (v) => {
+    if (typeof v !== "string" || seen.has(v)) return;
+    seen.add(v); out.push(v);
+  };
+  const addFrom = (n) => {
+    const t = n?.["@type"];
+    if (!t) return;
+    for (const v of Array.isArray(t) ? t : [t]) push(v);
+  };
+  addFrom(subj);
+  for (const n of nodes) if (n !== subj) addFrom(n);
+  return out;
 }
 
 function rowHTML(it) {

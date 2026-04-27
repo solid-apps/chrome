@@ -17,7 +17,31 @@
 import { getAppsList, saveAppsList } from "./pod.js";
 
 const KEY = "chrome-installed";
+const SEEDED_KEY = "chrome-installed-seeded";
 const subs = new Set();
+
+// Default pinned apps for first-time users. Curated trio that
+// demonstrates the breadth of the platform without overwhelming the
+// shelf: Pad (productivity), Clock (live data), Today (real-time +
+// pod-stored). The user can unpin any of them; the seed runs exactly
+// once per browser, so clearing the list and not re-seeding sticks.
+const DEFAULT_URLS = [
+  "https://solid-apps.github.io/hub/directory/pad.js",
+  "https://solid-apps.github.io/hub/directory/clock.js",
+  "https://solid-apps.github.io/hub/directory/motd.js",
+];
+
+(function seedDefaultsOnce() {
+  if (localStorage.getItem(SEEDED_KEY)) return;
+  if (localStorage.getItem(KEY)) {
+    // User already has a list (e.g. set before this code shipped). Mark
+    // as seeded so we don't trample it on next load.
+    localStorage.setItem(SEEDED_KEY, "1");
+    return;
+  }
+  localStorage.setItem(KEY, JSON.stringify(DEFAULT_URLS));
+  localStorage.setItem(SEEDED_KEY, "1");
+})();
 
 function read() {
   try { return JSON.parse(localStorage.getItem(KEY) || "[]"); }

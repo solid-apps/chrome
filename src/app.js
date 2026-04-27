@@ -10,12 +10,16 @@ import { startClock } from "./tray.js";
 import {
   openWindow, listWindows, onWindowsChange,
   focusWindow, minimizeWindow, restoreWindow,
+  getCurrentDesk, getDesks, switchDesk, addDesk, removeDesk, nextDesk, prevDesk,
 } from "./windows.js";
 import { openLauncher, closeLauncher, isOpen as launcherIsOpen } from "./launcher.js";
 import { onAuth, getAuth, authFetch, login, logout } from "./auth.js";
 import { subscribe } from "./notifications.js";
 import { list as listInstalled, onChange as onInstalledChange, syncFromPod as syncInstalledFromPod } from "./installed.js";
 import { listApps as listRegistryApps, loadApp } from "./registry.js";
+import * as wallpaper from "./wallpaper.js";
+import { toggleQuickSettings } from "./quick-settings.js";
+import "./lock.js"; // import for side-effect: idle auto-lock listener
 
 // ---- Theme (system pref → localStorage). ----
 function resolveTheme() {
@@ -28,6 +32,9 @@ function setTheme(t) {
   localStorage.setItem("chrome-theme", t);
 }
 setTheme(resolveTheme());
+
+// Apply any cached wallpaper before first paint.
+wallpaper.apply();
 
 // ---- Shelf — pinned apps (always visible, click to launch) +
 //      running windows (one pill per open window). The two are
@@ -135,17 +142,38 @@ function makeAppCtx(win) {
   };
 }
 
-onWindowsChange(drawShelf);
+function drawDesks() {
+  const el = document.getElementById("tray-desks");
+  if (!el) return;
+  const desks = getDesks();
+  const cur = getCurrentDesk();
+  el.innerHTML = desks.map(id => `
+    <button class="tray-desk ${id === cur ? "active" : ""}" data-desk="${id}" title="Desk ${id}"></button>
+  `).join("") + `<button class="tray-desk-add" id="tray-desk-add" title="New desk">+</button>`;
+  for (const b of el.querySelectorAll("[data-desk]")) {
+    b.addEventListener("click", () => switchDesk(+b.dataset.desk));
+    b.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      if (getDesks().length > 1 && confirm(`Remove desk ${b.dataset.desk}?`)) {
+        removeDesk(+b.dataset.desk);
+      }
+    });
+  }
+  el.querySelector("#tray-desk-add").addEventListener("click", () => addDesk());
+}
+
+onWindowsChange(() => { drawShelf(); drawDesks(); });
 onInstalledChange(drawShelf);
 drawShelf();
+drawDesks();
 
 // ---- Tray buttons ----
 document.getElementById("tray-launcher").addEventListener("click", () => {
   launcherIsOpen() ? closeLauncher() : openLauncher();
 });
-document.getElementById("tray-quick").addEventListener("click", () => {
-  const cur = document.documentElement.getAttribute("data-theme");
-  setTheme(cur === "dark" ? "light" : "dark");
+document.getElementById("tray-quick").addEventListener("click", (e) => {
+  e.stopPropagation();
+  toggleQuickSettings();
 });
 // Auth pill — clicking signs in (when logged out) or shows a small
 // menu (when logged in). For day 4 the menu is just "Sign out".
@@ -181,6 +209,8 @@ onAuth((a) => {
         )) location.reload();
       }
     }).catch(() => { /* best-effort */ });
+    // Silently pull the wallpaper from pod and apply if it changed.
+    wallpaper.syncFromPod(a.id).catch(() => {});
   }
 });
 
@@ -193,6 +223,13 @@ document.addEventListener("keydown", (e) => {
   if ((e.metaKey || e.ctrlKey) && e.code === "Space") {
     e.preventDefault();
     launcherIsOpen() ? closeLauncher() : openLauncher();
+  }
+  // Cmd+] / Cmd+[ — switch desks. Cmd+] at the last desk creates a new one.
+  // Don't intercept when the user is typing in an input or contenteditable.
+  if ((e.metaKey || e.ctrlKey) && (e.key === "]" || e.key === "[")) {
+    if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable) return;
+    e.preventDefault();
+    e.key === "]" ? nextDesk() : prevDesk();
   }
 });
 

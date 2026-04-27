@@ -35,8 +35,63 @@ const SNAP_PREVIEW_FADE = 120; // ms
 let nextId = 1;
 let nextZ = 100;
 let active = null;
-const all = [];        // { id, el, content, title, icon, app, x, y, w, h, minimized, maximized, beforeMaximize }
+const all = [];        // { id, el, content, title, icon, app, x, y, w, h, minimized, maximized, beforeMaximize, desk }
 const subs = new Set();
+
+// ---- Desks (virtual workspaces) ----
+let desks = [1];
+let currentDesk = 1;
+let nextDeskId = 2;
+
+export function getCurrentDesk() { return currentDesk; }
+export function getDesks() { return desks.slice(); }
+
+function applyDeskVisibility() {
+  for (const w of all) {
+    const onThisDesk = w.desk === currentDesk;
+    w.el.style.display = (onThisDesk && !w.minimized) ? "" : "none";
+  }
+}
+
+export function switchDesk(id) {
+  if (!desks.includes(id) || id === currentDesk) return;
+  currentDesk = id;
+  applyDeskVisibility();
+  // Refocus the topmost visible window on the new desk.
+  const onDesk = all.filter(w => w.desk === id && !w.minimized);
+  active = onDesk.length ? onDesk[onDesk.length - 1].id : null;
+  if (active) focus(active);
+  notify();
+}
+
+export function addDesk() {
+  const id = nextDeskId++;
+  desks.push(id);
+  switchDesk(id);
+  return id;
+}
+
+export function removeDesk(id) {
+  if (desks.length <= 1) return;
+  // Move any windows on the doomed desk to the previous desk.
+  const i = desks.indexOf(id);
+  if (i < 0) return;
+  const next = desks[i - 1] ?? desks[i + 1];
+  for (const w of all) if (w.desk === id) w.desk = next;
+  desks.splice(i, 1);
+  if (currentDesk === id) switchDesk(next);
+  notify();
+}
+
+export function nextDesk() {
+  const i = desks.indexOf(currentDesk);
+  if (i === desks.length - 1) addDesk();
+  else switchDesk(desks[i + 1]);
+}
+export function prevDesk() {
+  const i = desks.indexOf(currentDesk);
+  if (i > 0) switchDesk(desks[i - 1]);
+}
 
 let snapPreviewEl = null;
 let pendingSnap = null; // {edge: "top"|"left"|"right", rect}
@@ -51,8 +106,21 @@ function workspaceRect() {
 }
 
 export function listWindows() {
+  // Returns only the windows on the current desk — what the shelf
+  // and switcher should show. Use listAllWindows() if you need
+  // global state.
+  return all
+    .filter(w => w.desk === currentDesk)
+    .map(w => ({
+      id: w.id, title: w.title, icon: w.icon, app: w.app, desk: w.desk,
+      minimized: w.minimized, maximized: w.maximized,
+      active: active === w.id,
+    }));
+}
+
+export function listAllWindows() {
   return all.map(w => ({
-    id: w.id, title: w.title, icon: w.icon, app: w.app,
+    id: w.id, title: w.title, icon: w.icon, app: w.app, desk: w.desk,
     minimized: w.minimized, maximized: w.maximized,
     active: active === w.id,
   }));
@@ -105,6 +173,7 @@ export function openWindow(opts = {}) {
     icon: opts.icon || null,
     app: opts.app || null,
     x, y, w, h,
+    desk: opts.desk ?? currentDesk,
     minimized: false, maximized: false, beforeMaximize: null,
   };
   all.push(win);

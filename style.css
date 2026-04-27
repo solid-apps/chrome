@@ -74,6 +74,24 @@ body {
 }
 .tray-spacer { flex: 1; }
 .tray-clock { font: 500 12px var(--mono); color: var(--text); padding: 0 8px; }
+.tray-desks { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
+.tray-desk {
+  width: 16px; height: 8px;
+  background: var(--text-faint); border: none; border-radius: 3px;
+  cursor: pointer; padding: 0;
+  opacity: 0.5; transition: opacity .12s, background .12s, width .15s;
+}
+.tray-desk:hover { opacity: 1; }
+.tray-desk.active { opacity: 1; background: var(--accent); width: 24px; }
+.tray-desk-add {
+  width: 16px; height: 16px;
+  background: transparent; color: var(--text-faint);
+  border: 1px dashed var(--line); border-radius: 4px;
+  cursor: pointer; padding: 0;
+  font: 600 12px var(--sans); line-height: 1;
+  transition: color .12s, border-color .12s;
+}
+.tray-desk-add:hover { color: var(--accent); border-color: var(--accent); }
 .tray-pill {
   display: inline-flex; align-items: center; gap: 6px;
   height: 22px; padding: 0 10px;
@@ -318,3 +336,70 @@ body {
   font: 11px var(--mono);
   color: var(--text-faint);
 }
+
+/* ---------- Quick settings popover ---------- */
+.quick-settings {
+  position: fixed; z-index: 70;
+  width: 320px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.18), 0 4px 10px rgba(0,0,0,0.06);
+  padding: 12px;
+  display: flex; flex-direction: column; gap: 10px;
+  animation: qs-pop .12s var(--easing);
+}
+@keyframes qs-pop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; } }
+
+.qs-row { display: flex; align-items: center; gap: 10px; }
+.qs-row.qs-stack { flex-direction: column; align-items: stretch; gap: 6px; }
+.qs-label { flex: 0 0 80px; font: 500 13px var(--sans); color: var(--text-dim); }
+.qs-seg { display: inline-flex; gap: 0; }
+.qs-seg button {
+  background: var(--bg-elev-2); border: 1px solid var(--line); color: var(--text-dim);
+  padding: 5px 14px; font: 13px var(--sans); cursor: pointer;
+}
+.qs-seg button:first-child { border-radius: 7px 0 0 7px; }
+.qs-seg button:last-child  { border-radius: 0 7px 7px 0; border-left: none; }
+.qs-seg button.on { background: var(--accent); color: var(--text-on-accent, white); border-color: var(--accent); }
+.qs-input-row { display: flex; gap: 6px; }
+.qs-input-row input {
+  flex: 1; background: var(--bg-elev-2); border: 1px solid var(--line);
+  border-radius: 7px; padding: 6px 10px; font: 13px var(--mono);
+  color: var(--text); outline: none; min-width: 0;
+}
+.qs-input-row input:focus { border-color: var(--accent); }
+.qs-btn {
+  background: var(--accent); color: var(--text-on-accent, white);
+  border: none; border-radius: 7px; padding: 6px 14px;
+  font: 500 13px var(--sans); cursor: pointer;
+}
+.qs-btn:hover { filter: brightness(1.05); }
+.qs-btn.qs-ghost { background: var(--bg-elev-2); color: var(--text-dim); border: 1px solid var(--line); }
+.qs-btn.qs-wide { width: 100%; padding: 8px; }
+.qs-hint { font: 11px var(--mono); color: var(--text-faint); }
+.qs-foot { padding-top: 8px; border-top: 1px solid var(--line); font: 11px var(--mono); color: var(--text-faint); }
+.qs-foot code { word-break: break-all; }
+
+/* ---------- Lock screen ---------- */
+.lock-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px;
+  background: rgba(15,23,42,0.55);
+  backdrop-filter: saturate(1.2) blur(28px);
+  -webkit-backdrop-filter: saturate(1.2) blur(28px);
+  color: white;
+  cursor: pointer;
+  user-select: none;
+  animation: lock-fade-in .25s var(--easing);
+}
+@keyframes lock-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.lock-overlay.lock-fading { opacity: 0; transition: opacity .25s var(--easing); }
+.lock-clock { font: 200 96px/1 var(--sans); letter-spacing: -0.04em; }
+.lock-date  { font: 400 18px var(--sans); opacity: 0.85; margin-top: 8px; }
+.lock-user  { font: 13px var(--mono); opacity: 0.6; margin-top: 18px; }
+.lock-hint  { font: 12px var(--mono); opacity: 0.5; margin-top: 24px; }
+
+/* When a custom wallpaper is applied, ditch the gradient. */
+#wallpaper.wallpaper-custom { background-image: var(--wp-url); }

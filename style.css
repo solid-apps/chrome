@@ -150,6 +150,8 @@ body {
 .shelf-app.pinned { background: var(--bg-elev-2); border-style: dashed; }
 .shelf-app.pinned:hover { border-style: solid; }
 .shelf-app.launching { opacity: 0.6; }
+.shelf-app.builtin { background: var(--accent-soft); border-color: var(--accent-soft); color: var(--accent); }
+.shelf-app.builtin:hover { border-color: var(--accent); }
 .shelf-sep { width: 1px; height: 28px; background: var(--line); margin: 0 4px; }
 
 /* ---------- Windows ---------- */

@@ -17,6 +17,7 @@ import { onAuth, getAuth, authFetch, login, logout } from "./auth.js";
 import { subscribe } from "./notifications.js";
 import { list as listInstalled, onChange as onInstalledChange, syncFromPod as syncInstalledFromPod } from "./installed.js";
 import { listApps as listRegistryApps, loadApp } from "./registry.js";
+import { listBuiltins } from "./builtins/index.js";
 import * as wallpaper from "./wallpaper.js";
 import { toggleQuickSettings } from "./quick-settings.js";
 import "./lock.js"; // import for side-effect: idle auto-lock listener
@@ -54,15 +55,27 @@ const launchingByUrl = new Set();   // for the spinner state
 function drawShelf() {
   const wins = listWindows();
   const installed = listInstalled();
+  const builtins = listBuiltins();
   // Pinned apps that already have a window open are deduped from the
   // pinned area — the running pill represents them.
   const runningUrls = new Set(wins.map(w => w.app?.url).filter(Boolean));
+  const builtinNotRunning = builtins.filter(b => !runningUrls.has(b.url));
   const pinnedNotRunning = installed.filter(u => !runningUrls.has(u));
 
-  if (!installed.length && !wins.length) {
+  if (!installed.length && !wins.length && !builtins.length) {
     shelfRunning.innerHTML = `<span class="shelf-empty">no apps pinned · ⌘Space to launch · star apps to pin</span>`;
     return;
   }
+
+  const builtinHTML = builtinNotRunning.map(b => {
+    const launching = launchingByUrl.has(b.url);
+    return `
+      <button class="shelf-app builtin ${launching ? "launching" : ""}" data-launch-url="${escape(b.url)}" title="${escape(b.name)}">
+        <span class="shelf-app-icon">${escape(b.icon)}</span>
+        <span class="shelf-app-name">${escape(b.name)}</span>
+      </button>
+    `;
+  }).join("");
 
   const pinnedHTML = pinnedNotRunning.map(url => {
     const meta = registryAppsByUrl.get(url) || {};
@@ -82,8 +95,9 @@ function drawShelf() {
     </button>
   `).join("");
 
-  const sep = (pinnedHTML && runningHTML) ? `<span class="shelf-sep"></span>` : "";
-  shelfRunning.innerHTML = pinnedHTML + sep + runningHTML;
+  const sepBeforePinned = (builtinHTML && pinnedHTML) ? `<span class="shelf-sep"></span>` : "";
+  const sepBeforeRunning = ((builtinHTML || pinnedHTML) && runningHTML) ? `<span class="shelf-sep"></span>` : "";
+  shelfRunning.innerHTML = builtinHTML + sepBeforePinned + pinnedHTML + sepBeforeRunning + runningHTML;
 
   for (const btn of shelfRunning.querySelectorAll("[data-wid]")) {
     btn.addEventListener("click", () => {
@@ -105,7 +119,8 @@ async function launchPinned(url) {
   launchingByUrl.add(url); drawShelf();
   try {
     const app = await loadApp(url);
-    const meta = registryAppsByUrl.get(url) || {};
+    const builtinMeta = listBuiltins().find(b => b.url === url);
+    const meta = builtinMeta || registryAppsByUrl.get(url) || {};
     openWindow({
       title: app.meta?.name || meta.name || url,
       icon:  app.meta?.icon || meta.icon || "📦",

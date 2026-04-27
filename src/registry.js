@@ -51,15 +51,24 @@ export async function listPanes() {
 /**
  * Import an app's ES module, normalising default-vs-named exports.
  * Returns the app object: { meta: { id, name, icon, … }, render(...) }.
+ *
+ * `chrome:` URLs resolve to chrome's built-in apps (no network).
  */
 export async function loadApp(url) {
   if (moduleCache.has(url)) return moduleCache.get(url);
-  const mod = await import(url);
-  // Apps may export the API at the top level or as `default`.
-  const app = (mod.default && typeof mod.default.render === "function")
-    ? mod.default
-    : (typeof mod.render === "function" ? mod : null);
-  if (!app) throw new Error("module didn't expose a render() function");
+  let app;
+  if (typeof url === "string" && url.startsWith("chrome:")) {
+    const { getBuiltin } = await import("./builtins/index.js");
+    const m = getBuiltin(url);
+    if (!m) throw new Error("unknown chrome: URL " + url);
+    app = m;
+  } else {
+    const mod = await import(url);
+    app = (mod.default && typeof mod.default.render === "function")
+      ? mod.default
+      : (typeof mod.render === "function" ? mod : null);
+    if (!app) throw new Error("module didn't expose a render() function");
+  }
   moduleCache.set(url, app);
   return app;
 }

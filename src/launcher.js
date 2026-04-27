@@ -11,6 +11,7 @@ import { openWindow } from "./windows.js";
 import { getAuth, authFetch } from "./auth.js";
 import { subscribe } from "./notifications.js";
 import { install, uninstall, isInstalled, list as listInstalled } from "./installed.js";
+import { listBuiltins } from "./builtins/index.js";
 
 let overlay = null;
 let apps = null;        // cached after first load
@@ -95,7 +96,20 @@ export function openLauncher() {
       return;
     }
     const installedSet = new Set(listInstalled());
-    grid.innerHTML = matches.map(a => {
+    // Built-ins always shown first; they don't get a pin button
+    // (they're permanently pinned).
+    const builtinMatches = !q
+      ? listBuiltins()
+      : listBuiltins().filter(a => a.name.toLowerCase().includes(q));
+    const builtinHTML = builtinMatches.map(a => `
+      <div class="launcher-app launcher-builtin" tabindex="0" data-url="${escape(a.url)}" title="${escape(a.description)}">
+        <div class="launcher-app-icon">${escape(a.icon)}</div>
+        <div class="launcher-app-name">${escape(a.name)}</div>
+        <div class="launcher-app-author">built in</div>
+      </div>
+    `).join("");
+
+    const registryHTML = matches.map(a => {
       const pinned = installedSet.has(a.url);
       return `
       <div class="launcher-app ${pinned ? "pinned" : ""}" tabindex="0" data-url="${escape(a.url)}" title="${escape(a.description)}">
@@ -106,6 +120,8 @@ export function openLauncher() {
       </div>
     `;
     }).join("");
+
+    grid.innerHTML = builtinHTML + registryHTML;
     for (const card of grid.querySelectorAll("[data-url]")) {
       card.addEventListener("click", (e) => {
         if (e.target.closest("[data-pin]")) return; // pin button handled below

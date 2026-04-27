@@ -68,6 +68,9 @@ function draw() {
     <div class="qs-row">
       <button class="qs-btn qs-wide" id="qs-lock">🔒 Lock screen</button>
     </div>
+    <div class="qs-row">
+      <button class="qs-btn qs-wide qs-ghost" id="qs-reset" title="Re-pin the default starter apps to your shelf">Reset shelf to defaults</button>
+    </div>
     ${auth.loggedIn ? `<div class="qs-foot">Signed in as <code>${escape(auth.id)}</code></div>` : ""}
   `;
 
@@ -92,6 +95,12 @@ function draw() {
   popover.querySelector("#qs-lock").addEventListener("click", () => {
     close();
     lock();
+  });
+  popover.querySelector("#qs-reset").addEventListener("click", () => {
+    if (!confirm("Re-pin the default starter apps (Pad, Clock, Today) and clear any unpinning you've done? Reload required.")) return;
+    localStorage.removeItem("chrome-installed");
+    localStorage.removeItem("chrome-installed-seeded");
+    location.reload();
   });
 }
 

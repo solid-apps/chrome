@@ -8,6 +8,8 @@
 
 import { listApps, loadApp } from "./registry.js";
 import { openWindow } from "./windows.js";
+import { getAuth, authFetch } from "./auth.js";
+import { subscribe } from "./notifications.js";
 
 let overlay = null;
 let apps = null;        // cached after first load
@@ -156,13 +158,14 @@ async function launchApp(url) {
 }
 
 function makeCtx(win) {
+  // Snapshot auth on render. Apps that need live auth changes can
+  // re-read via getAuth() — chrome doesn't auto-restart apps on
+  // sign-in, the user can relaunch from the launcher.
   return {
-    // Auth + real-time come in day 4. Apps that read these get
-    // sensible defaults so they don't crash before then.
-    auth: { loggedIn: false, type: null, id: null },
-    fetch: (...args) => window.fetch(...args),
-    subscribe: async () => () => {}, // no-op until day 4
-    openWindow,                       // child windows for apps that want them
+    get auth() { return getAuth(); },
+    fetch: authFetch,
+    subscribe,
+    openWindow,
     closeWindow: () => win.close(),
     setTitle: (t) => win.setTitle(t),
   };

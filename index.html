@@ -29,6 +29,10 @@
     <div class="shelf-running" id="shelf-running"></div>
   </div>
 
+  <!-- xlogin: one-tag auth (Solid OIDC + Nostr). Loaded before app.js
+       so its event listeners are wired before xlogin emits its first
+       restore event. -->
+  <script src="https://unpkg.com/xlogin"></script>
   <script type="module" src="./src/app.js"></script>
 </body>
 </html>

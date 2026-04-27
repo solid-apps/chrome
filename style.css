@@ -85,6 +85,8 @@ body {
 .tray-pill:hover { background: var(--bg-elev); color: var(--text); border-color: var(--line); }
 .tray-pill svg { display: block; }
 .tray-auth { padding: 0 12px; }
+.tray-auth-on { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-soft); }
+.tray-auth-on:hover { color: var(--accent); }
 
 /* ---------- Windows area ---------- */
 .windows {

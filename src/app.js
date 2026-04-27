@@ -12,6 +12,7 @@ import {
   focusWindow, minimizeWindow, restoreWindow,
 } from "./windows.js";
 import { openLauncher, closeLauncher, isOpen as launcherIsOpen } from "./launcher.js";
+import { onAuth, login, logout } from "./auth.js";
 
 // ---- Theme (system pref → localStorage). ----
 function resolveTheme() {
@@ -61,9 +62,30 @@ document.getElementById("tray-quick").addEventListener("click", () => {
   const cur = document.documentElement.getAttribute("data-theme");
   setTheme(cur === "dark" ? "light" : "dark");
 });
-document.getElementById("tray-auth").addEventListener("click", () => {
-  alert("Auth: hooking up xlogin in day 4.");
+// Auth pill — clicking signs in (when logged out) or shows a small
+// menu (when logged in). For day 4 the menu is just "Sign out".
+const authPill = document.getElementById("tray-auth");
+authPill.addEventListener("click", () => {
+  const a = authStateRef.current;
+  if (!a.loggedIn) login();
+  else if (confirm(`Sign out ${shortName(a)}?`)) logout();
 });
+
+const authStateRef = { current: { loggedIn: false } };
+onAuth((a) => {
+  authStateRef.current = a;
+  authPill.textContent = a.loggedIn ? shortName(a) : "Sign in";
+  authPill.classList.toggle("tray-auth-on", a.loggedIn);
+  authPill.title = a.loggedIn
+    ? `${a.id} (${a.type}) — click to sign out`
+    : "Sign in with WebID or Nostr key";
+});
+
+function shortName(a) {
+  if (!a.id) return "you";
+  try { return new URL(a.id).hostname.replace(/^www\./, ""); }
+  catch { return a.id.length > 14 ? a.id.slice(0, 6) + "…" + a.id.slice(-4) : a.id; }
+}
 document.addEventListener("keydown", (e) => {
   if ((e.metaKey || e.ctrlKey) && e.code === "Space") {
     e.preventDefault();

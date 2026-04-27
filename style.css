@@ -111,3 +111,106 @@ body {
   color: var(--text-faint);
   letter-spacing: 0.04em;
 }
+.shelf-app {
+  display: flex; align-items: center; gap: 8px;
+  height: 36px; padding: 0 14px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  color: var(--text-dim);
+  font: 500 13px var(--sans);
+  cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s, transform .08s;
+}
+.shelf-app:hover { color: var(--text); border-color: var(--accent); transform: translateY(-1px); }
+.shelf-app.active { color: var(--text); border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.shelf-app.minimized { opacity: 0.55; }
+.shelf-app-icon { font-size: 16px; }
+.shelf-app-name { max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- Windows ---------- */
+.window {
+  background: var(--bg-elev);
+  backdrop-filter: var(--tray-blur);
+  -webkit-backdrop-filter: var(--tray-blur);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  transition: box-shadow .15s var(--easing);
+}
+.window.win-active { box-shadow: 0 18px 40px rgba(15,23,42,0.18), 0 4px 10px rgba(15,23,42,0.10); }
+.window.win-maximized { border-radius: 0; }
+
+.win-titlebar {
+  height: 32px;
+  display: flex; align-items: center;
+  padding: 0 6px 0 12px;
+  background: var(--bg-elev);
+  border-bottom: 1px solid var(--line);
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+}
+.win-titlebar:active { cursor: grabbing; }
+.win-title { flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.win-icon { font-size: 14px; flex-shrink: 0; }
+.win-title-text { font: 500 13px var(--sans); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.win-actions { display: flex; align-items: center; gap: 2px; }
+.win-act {
+  width: 26px; height: 22px;
+  display: grid; place-items: center;
+  background: transparent; border: none; border-radius: 5px;
+  color: var(--text-dim);
+  font: 500 14px var(--sans);
+  cursor: pointer;
+  transition: background .1s, color .1s;
+}
+.win-act:hover { background: var(--bg-elev-2); color: var(--text); }
+.win-close:hover { background: var(--danger); color: white; }
+.win-content { flex: 1; overflow: auto; }
+.win-error {
+  padding: 14px 18px;
+  background: rgba(239,68,68,0.08);
+  border-bottom: 1px solid var(--line);
+  color: var(--danger);
+  font: 13px var(--mono);
+}
+
+/* Resize handles — invisible bands at the edges + corners. */
+.win-resize { position: absolute; }
+.win-n { top: -3px; left: 8px; right: 8px; height: 6px; cursor: ns-resize; }
+.win-s { bottom: -3px; left: 8px; right: 8px; height: 6px; cursor: ns-resize; }
+.win-e { top: 8px; bottom: 8px; right: -3px; width: 6px; cursor: ew-resize; }
+.win-w { top: 8px; bottom: 8px; left: -3px; width: 6px; cursor: ew-resize; }
+.win-ne { top: -4px; right: -4px; width: 12px; height: 12px; cursor: nesw-resize; }
+.win-nw { top: -4px; left: -4px; width: 12px; height: 12px; cursor: nwse-resize; }
+.win-se { bottom: -4px; right: -4px; width: 12px; height: 12px; cursor: nwse-resize; }
+.win-sw { bottom: -4px; left: -4px; width: 12px; height: 12px; cursor: nesw-resize; }
+.window.win-maximized .win-resize { display: none; }
+
+/* Snap preview overlay shown during title-bar drag near an edge. */
+.win-snap-preview {
+  position: fixed;
+  z-index: 50;
+  background: var(--accent-soft);
+  border: 2px dashed var(--accent);
+  border-radius: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .12s var(--easing), left .12s var(--easing), top .12s var(--easing), width .12s var(--easing), height .12s var(--easing);
+}
+
+/* Demo-window buttons (placeholder UI). */
+.demo-btn {
+  padding: 6px 14px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  font: 500 13px var(--sans);
+  cursor: pointer;
+  transition: border-color .12s, background .12s;
+}
+.demo-btn:hover { border-color: var(--accent); background: var(--accent-soft); }

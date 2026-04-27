@@ -108,23 +108,62 @@ export async function render(content, ctx) {
         const url = tr.dataset.url;
         const type = tr.dataset.type;
         if (type === "container") { currentDir = url; load(); }
-        else window.open(url, "_blank");
+        else openResource(url, ctx);
       });
     }
   }
+}
 
-  function rowHTML(it) {
-    const name = decodeURIComponent(it.url.replace(/\/$/, "").split("/").pop() || it.url);
-    const ext = it.type === "container" ? "" : (name.split(".").pop() || "").toUpperCase();
-    const icon = it.type === "container" ? "📁" : iconForExt(name);
-    const typeLabel = it.type === "container" ? "Folder" : (ext || "—");
-    return `<tr data-url="${escape(it.url)}" data-type="${it.type}">
-      <td class="files-name"><span class="files-icon">${icon}</span>${escape(name)}</td>
-      <td class="files-meta">${escape(typeLabel)}</td>
-      <td class="files-meta files-num">${it.size != null ? fmtBytes(it.size) : "—"}</td>
-      <td class="files-meta">${it.modified ? fmtDate(it.modified) : "—"}</td>
-    </tr>`;
+/** Try to render a resource via a registry pane (matched by rdf:type).
+ *  Falls back to opening the raw URL in a new tab when no pane matches
+ *  or fetching/parsing fails. */
+async function openResource(url, ctx) {
+  let doc, types = [];
+  try {
+    const r = await ctx.fetch(url, { cache: "reload", headers: { Accept: "application/ld+json" } });
+    if (r.ok) {
+      const body = (await r.text()).trim();
+      if (body.startsWith("{") || body.startsWith("[")) {
+        doc = JSON.parse(body);
+        types = extractTypes(doc, url);
+      }
+    }
+  } catch { /* fall through to raw open */ }
+
+  if (types.length) {
+    try {
+      const { openPaneFor } = await import("../panes.js");
+      const entry = await openPaneFor({ url, doc, types }, ctx);
+      if (entry) return;
+    } catch { /* fall through */ }
   }
+  window.open(url, "_blank");
+}
+
+function extractTypes(doc, url) {
+  if (!doc) return [];
+  const nodes = Array.isArray(doc?.["@graph"]) ? doc["@graph"] : [doc];
+  let subj = nodes.find(n => n["@id"] === url) || null;
+  if (!subj) {
+    subj = nodes.find(n => typeof n["@id"] === "string" && n["@id"].split("#")[0] === url) || nodes[0];
+  }
+  if (!subj) return [];
+  const t = subj["@type"];
+  if (!t) return [];
+  return Array.isArray(t) ? t.slice() : [t];
+}
+
+function rowHTML(it) {
+  const name = decodeURIComponent(it.url.replace(/\/$/, "").split("/").pop() || it.url);
+  const ext = it.type === "container" ? "" : (name.split(".").pop() || "").toUpperCase();
+  const icon = it.type === "container" ? "📁" : iconForExt(name);
+  const typeLabel = it.type === "container" ? "Folder" : (ext || "—");
+  return `<tr data-url="${escape(it.url)}" data-type="${it.type}">
+    <td class="files-name"><span class="files-icon">${icon}</span>${escape(name)}</td>
+    <td class="files-meta">${escape(typeLabel)}</td>
+    <td class="files-meta files-num">${it.size != null ? fmtBytes(it.size) : "—"}</td>
+    <td class="files-meta">${it.modified ? fmtDate(it.modified) : "—"}</td>
+  </tr>`;
 }
 
 // ---- Helpers ----

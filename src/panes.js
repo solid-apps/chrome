@@ -85,7 +85,11 @@ export async function openPaneFor({ url, doc, types, name, icon }, ctx) {
         </div>`;
       },
     });
-    return null;
+    // Return the entry, not null — caller treats null as "no pane
+    // found, fall through to raw URL open." Here a pane WAS found,
+    // it just failed to load; the user wants to stay in chrome and
+    // see the error, not get a surprise browser tab.
+    return entry;
   }
 
   openWindow({
